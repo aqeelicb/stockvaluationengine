@@ -32,7 +32,7 @@ st.set_page_config(
 st.title("📈 Stock Valuation Engine by Aqeel")
 
 st.caption(
-    "Financial Statements: PKR Million | Forecast Charts: PKR Billion | Fair Value: PKR per Share")
+    "Financial Data: PKR Million | Forecast Charts: PKR Billion | Fair Value: PKR per Share")
 st.markdown(
 """
 Upload the valuation template Excel file to begin analysis.
@@ -676,6 +676,18 @@ latest_shares
 )
 
 ############################################################
+# FAIR VALUE RANGE
+############################################################
+
+bear_fair_value = fair_value * 0.95
+
+base_fair_value = fair_value
+
+bull_fair_value = fair_value * 1.05
+
+
+
+############################################################
 
 # DCF RESULTS
 
@@ -699,6 +711,136 @@ c3.metric(
 "Fair Value / Share",
 f"{fair_value:,.2f}"
 )
+
+############################################################
+# FAIR VALUE RANGE
+############################################################
+
+bear_fair_value = fair_value * 0.95
+
+base_fair_value = fair_value
+
+bull_fair_value = fair_value * 1.05
+
+st.subheader("Fair Value Range")
+
+col1, col2, col3 = st.columns(3)
+
+col1.metric(
+    "Bear Case",
+    f"Rs {bear_fair_value:,.2f}"
+)
+
+col2.metric(
+    "Base Case",
+    f"Rs {base_fair_value:,.2f}"
+)
+
+col3.metric(
+    "Bull Case",
+    f"Rs {bull_fair_value:,.2f}"
+)
+
+############################################################
+# DCF SENSITIVITY TABLE
+############################################################
+
+st.subheader("DCF Sensitivity Table")
+
+wacc_range = [
+    user_wacc - 0.02,
+    user_wacc - 0.01,
+    user_wacc,
+    user_wacc + 0.01,
+    user_wacc + 0.02
+]
+
+growth_range = [
+    user_terminal_growth - 0.01,
+    user_terminal_growth,
+    user_terminal_growth + 0.01
+]
+
+sensitivity_data = []
+
+for g in growth_range:
+
+    row = []
+
+    for w in wacc_range:
+
+        try:
+
+            tv = (
+                final_fcff
+                * (1 + g)
+                /
+                (w - g)
+            )
+
+            pv_tv = (
+                tv
+                /
+                ((1 + w) ** forecast_years)
+            )
+
+            ev = (
+                forecast_df["PV_FCFF"].sum()
+                +
+                pv_tv
+            )
+
+            eq = (
+                ev
+                - latest_debt
+                + latest_cash
+            )
+
+            fv = (
+                eq
+                /
+                latest_shares
+            )
+
+            row.append(
+                round(fv, 2)
+            )
+
+        except:
+
+            row.append(None)
+
+    sensitivity_data.append(row)
+
+sensitivity_df = pd.DataFrame(
+
+    sensitivity_data,
+
+    columns=[
+        f"{w*100:.1f}%"
+        for w in wacc_range
+    ],
+
+    index=[
+        f"{g*100:.1f}%"
+        for g in growth_range
+    ]
+)
+
+sensitivity_df.index.name = "Terminal Growth"
+
+st.markdown(
+    "**Columns = WACC | Rows = Terminal Growth**"
+)
+
+st.dataframe(
+    sensitivity_df,
+    use_container_width=True
+)
+
+############################################################
+# END OF SENSITIVITY ANALYSIS
+############################################################
 
 ############################################################
 
