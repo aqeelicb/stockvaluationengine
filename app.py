@@ -34,7 +34,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 ############################################################
 
 st.set_page_config(
-    page_title="Stock Valuation Engine by Aqeel",
+    page_title="StocksValue by Aqeel",
     layout="wide"
 )
 
@@ -71,7 +71,7 @@ st.markdown("""
 # APP TITLE
 ############################################################
 
-st.title("📈 Stock Valuation Engine by Aqeel")
+st.title("📈 StocksValue by Aqeel")
 
 st.caption(
     "Financial Data: PKR Million | Forecast Charts: PKR Billion | Fair Value: PKR per Share")
