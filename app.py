@@ -1095,6 +1095,65 @@ latest_debt = financials["Debt"].iloc[-1]
 latest_shares = financials["Shares_Outstanding"].iloc[-1]
 
 ############################################################
+# CURRENT MARKET DATA
+############################################################
+
+current_price = float(
+    market_df.loc[
+        market_df["Variable"] == "Current Market Price",
+        "Value"
+    ].iloc[0]
+)
+
+############################################################
+# CURRENT MARKET MULTIPLES (CALCULATED)
+############################################################
+
+market_cap = (
+    current_price
+    *
+    latest_shares
+)
+
+eps = (
+    latest_net_income
+    /
+    latest_shares
+)
+
+current_pe = (
+    current_price
+    /
+    eps
+) if eps != 0 else 0
+
+current_ps = (
+    market_cap
+    /
+    latest_revenue
+) if latest_revenue != 0 else 0
+
+market_ev = (
+    market_cap
+    +
+    latest_debt
+    -
+    latest_cash
+)
+
+latest_ebitda = (
+    latest_ebit
+    +
+    latest_depreciation
+)
+
+current_ev_ebitda = (
+    market_ev
+    /
+    latest_ebitda
+) if latest_ebitda != 0 else 0
+
+############################################################
 # PE VALUATION
 ############################################################
 
@@ -1180,42 +1239,6 @@ weighted_fair_value = (
     ev_ebitda_fair_value
     * ev_weight
 
-)
-
-############################################################
-# CURRENT MARKET DATA
-############################################################
-
-current_price = float(
-    market_df.loc[
-        market_df["Variable"] == "Current Market Price",
-        "Value"
-    ].iloc[0]
-)
-
-############################################################
-# CURRENT MARKET MULTIPLES
-############################################################
-
-current_pe = float(
-    market_df.loc[
-        market_df["Variable"] == "Current PE",
-        "Value"
-    ].iloc[0]
-)
-
-current_ps = float(
-    market_df.loc[
-        market_df["Variable"] == "Current PS",
-        "Value"
-    ].iloc[0]
-)
-
-current_ev_ebitda = float(
-    market_df.loc[
-        market_df["Variable"] == "Current EV/EBITDA",
-        "Value"
-    ].iloc[0]
 )
 
 ############################################################
@@ -1312,6 +1335,7 @@ with tab3:
             summary_df,
             use_container_width=True
         )
+        
         
 ###############################################################
 ################### Multiple Valuations and Summary Ends #####
