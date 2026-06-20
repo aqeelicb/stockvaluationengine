@@ -46,7 +46,7 @@ try:
     ) as template_file:
 
         st.download_button(
-            label="📥 Download Valuation Template",
+            label="📥 Download Sample Template",
             data=template_file,
             file_name="valuation_template.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
