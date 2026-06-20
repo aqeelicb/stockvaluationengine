@@ -20,7 +20,7 @@ import plotly.graph_objects as go
 ############################################################
 
 st.set_page_config(
-    page_title="Stock Valuation App by Aqeel",
+    page_title="Stock Valuation Engine by Aqeel",
     layout="wide"
 )
 
