@@ -58,15 +58,15 @@ except:
         "Valuation template file not found."
     )
 
+############################################################
+# FILE UPLOAD
+############################################################
+
 st.markdown(
 """
 Upload the valuation template Excel file to begin analysis.
 """
 )
-
-############################################################
-# FILE UPLOAD
-############################################################
 
 uploaded_file = st.file_uploader(
     "Upload Excel Workbook",
