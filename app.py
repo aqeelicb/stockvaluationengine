@@ -1,5 +1,5 @@
 ############################################################
-# STOCK VALUATION APP
+# STOCK VALUATION ENGINE
 # VERSION 1 - PART 1
 # DATA IMPORT & HISTORICAL ANALYSIS
 #
@@ -29,7 +29,7 @@ st.set_page_config(
 # APP TITLE
 ############################################################
 
-st.title("📈 Stock Valuation App by Aqeel")
+st.title("📈 Stock Valuation Engine by Aqeel")
 
 st.caption(
     "Financial Statements: PKR Million | Forecast Charts: PKR Billion | Fair Value: PKR per Share")
