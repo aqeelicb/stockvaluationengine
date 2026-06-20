@@ -16,6 +16,20 @@ import numpy as np
 import plotly.graph_objects as go
 
 ############################################################
+# PDF REPORTING
+############################################################
+
+from io import BytesIO
+
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer
+)
+
+from reportlab.lib.styles import getSampleStyleSheet
+
+############################################################
 # PAGE CONFIGURATION
 ############################################################
 
@@ -100,6 +114,7 @@ uploaded_file = st.file_uploader(
     "Upload Excel Workbook",
     type=["xlsx"]
 )
+
 
 ############################################################
 # STOP IF NO FILE UPLOADED
@@ -204,6 +219,120 @@ ev_weight = float(
         "Weight"
     ].iloc[0]
 )
+
+############################################################
+# PDF REPORT GENERATOR
+############################################################
+
+def create_pdf_report():
+
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(buffer)
+
+    styles = getSampleStyleSheet()
+
+    elements = []
+
+    elements.append(
+        Paragraph(
+            "StocksValue Analyst Report",
+            styles["Title"]
+        )
+    )
+
+    elements.append(
+        Spacer(1,12)
+    )
+
+    elements.append(
+        Paragraph(
+            f"Company: {company_name}",
+            styles["Normal"]
+        )
+    )
+
+    elements.append(
+        Paragraph(
+            f"Ticker: {ticker}",
+            styles["Normal"]
+        )
+    )
+
+    elements.append(
+        Spacer(1,12)
+    )
+
+    elements.append(
+        Paragraph(
+            "Valuation Summary",
+            styles["Heading2"]
+        )
+    )
+
+    elements.append(
+        Paragraph(
+            f"Current Market Price: Rs {current_price:,.2f}",
+            styles["Normal"]
+        )
+    )
+
+    elements.append(
+        Paragraph(
+            f"DCF Fair Value: Rs {fair_value:,.2f}",
+            styles["Normal"]
+        )
+    )
+
+    elements.append(
+        Paragraph(
+            f"PE Fair Value: Rs {pe_fair_value:,.2f}",
+            styles["Normal"]
+        )
+    )
+
+    elements.append(
+        Paragraph(
+            f"PS Fair Value: Rs {ps_fair_value:,.2f}",
+            styles["Normal"]
+        )
+    )
+
+    elements.append(
+        Paragraph(
+            f"EV/EBITDA Fair Value: Rs {ev_ebitda_fair_value:,.2f}",
+            styles["Normal"]
+        )
+    )
+
+    elements.append(
+        Paragraph(
+            f"Weighted Fair Value: Rs {weighted_fair_value:,.2f}",
+            styles["Normal"]
+        )
+    )
+
+    elements.append(
+        Paragraph(
+            f"Upside / Downside: {upside_pct:.1f}%",
+            styles["Normal"]
+        )
+    )
+
+    elements.append(
+        Paragraph(
+            f"Recommendation: {signal}",
+            styles["Normal"]
+        )
+    )
+
+    doc.build(elements)
+
+    pdf = buffer.getvalue()
+
+    buffer.close()
+
+    return pdf
 
 ############################################################
 # TABS
@@ -1336,6 +1465,18 @@ with tab3:
             use_container_width=True
         )
         
+        ############################################################
+        # PDF DOWNLOAD
+        ############################################################
+        
+        pdf_report = create_pdf_report()
+        
+        st.download_button(
+            label="📄 Download Analyst Report (PDF)",
+            data=pdf_report,
+            file_name=f"{ticker}_Analyst_Report.pdf",
+            mime="application/pdf"
+        )
         
 ###############################################################
 ################### Multiple Valuations and Summary Ends #####
