@@ -33,6 +33,31 @@ st.title("📈 Stock Valuation Engine by Aqeel")
 
 st.caption(
     "Financial Data: PKR Million | Forecast Charts: PKR Billion | Fair Value: PKR per Share")
+
+############################################################
+# DOWNLOAD EXCEL TEMPLATE
+############################################################
+
+try:
+
+    with open(
+        "valuation_template.xlsx",
+        "rb"
+    ) as template_file:
+
+        st.download_button(
+            label="📥 Download Valuation Template",
+            data=template_file,
+            file_name="valuation_template.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+except:
+
+    st.warning(
+        "Valuation template file not found."
+    )
+
 st.markdown(
 """
 Upload the valuation template Excel file to begin analysis.
