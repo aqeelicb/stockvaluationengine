@@ -613,6 +613,44 @@ with tab1:
         )
         
         ############################################################
+        # HISTORICAL ASSUMPTION TABLE
+        ############################################################
+        
+        historical_metrics = pd.DataFrame()
+        
+        historical_metrics["Year"] = financials["Year"]
+        
+        historical_metrics["Revenue_Growth"] = (
+            financials["Revenue"]
+            .pct_change()
+        )
+        
+        historical_metrics["EBIT_Margin"] = (
+            financials["EBIT"]
+            /
+            financials["Revenue"]
+        )
+        
+        historical_metrics["Investing_CF_Pct"] = (
+            financials["Investing_Cash_Flow"]
+            /
+            financials["Revenue"]
+        )
+        
+        historical_metrics["WC_Change_Pct"] = (
+            financials["Working_Capital"]
+            .diff()
+            /
+            financials["Revenue"]
+        )
+        
+        historical_metrics["Dep_Pct"] = (
+            financials["Depreciation"]
+            /
+            financials["Revenue"]
+        )
+        
+        ############################################################
         # HISTORICAL ASSUMPTION DRIVERS
         ############################################################
         
@@ -634,7 +672,7 @@ with tab1:
         )
         
         historical_metrics["Investing CF %"] = (
-            financials["Investing_CF"]
+            financials["Investing_Cash_Flow"]
             /
             financials["Revenue"]
             * 100
@@ -744,31 +782,6 @@ with tab1:
         
         st.caption(
             "🟢 Within 20% of historical average | 🟡 20%-50% deviation | 🔴 More than 50% deviation from historical average"
-        )
-        
-        ############ AVERAGES BEING USED IN THE MODEL ##############
-        st.subheader("Assumptions Derived From History")
-        
-        assumption_df = pd.DataFrame({
-            "Metric": [
-                "Revenue Growth %",
-                "EBIT Margin %",
-                "Investing CF %",
-                "ΔWC % Revenue",
-                "Dep % Revenue"
-            ],
-            "Historical Average": [
-                round(hist_growth * 100, 2),
-                round(hist_margin * 100, 2),
-                round(hist_investing * 100, 2),
-                round(hist_wc * 100, 2),
-                round(hist_dep * 100, 2)
-            ]
-        })
-        
-        st.dataframe(
-            assumption_df,
-            use_container_width=True
         )
         
         
