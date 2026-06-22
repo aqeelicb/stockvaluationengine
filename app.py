@@ -613,6 +613,166 @@ with tab1:
         )
         
         ############################################################
+        # HISTORICAL ASSUMPTION DRIVERS
+        ############################################################
+        
+        historical_metrics = pd.DataFrame()
+        
+        historical_metrics["Year"] = financials["Year"]
+        
+        historical_metrics["Revenue Growth %"] = (
+            financials["Revenue"]
+            .pct_change()
+            * 100
+        )
+        
+        historical_metrics["EBIT Margin %"] = (
+            financials["EBIT"]
+            /
+            financials["Revenue"]
+            * 100
+        )
+        
+        historical_metrics["Investing CF %"] = (
+            financials["Investing_CF"]
+            /
+            financials["Revenue"]
+            * 100
+        )
+        
+        historical_metrics["ΔWC % Revenue"] = (
+            financials["Working_Capital"]
+            .diff()
+            /
+            financials["Revenue"]
+            * 100
+        )
+        
+        historical_metrics["Dep % Revenue"] = (
+            financials["Depreciation"]
+            /
+            financials["Revenue"]
+            * 100
+        )
+        
+        ############################################################
+        # ROUND VALUES
+        ############################################################
+        
+        for col in historical_metrics.columns[1:]:
+        
+            historical_metrics[col] = (
+                historical_metrics[col]
+                .round(2)
+            )
+        
+        ############################################################
+        # COLOR CODING
+        ############################################################
+        
+        def highlight_deviation(series):
+        
+            avg = series.mean()
+        
+            colors = []
+        
+            for value in series:
+        
+                if pd.isna(value):
+        
+                    colors.append("")
+        
+                else:
+        
+                    deviation = abs(
+                        value - avg
+                    ) / abs(avg) if avg != 0 else 0
+        
+                    if deviation > 0.50:
+        
+                        colors.append(
+                            "background-color:#ff9999"
+                        )  # Red
+        
+                    elif deviation > 0.20:
+        
+                        colors.append(
+                            "background-color:#fff2a8"
+                        )  # Yellow
+        
+                    else:
+        
+                        colors.append(
+                            "background-color:#c6efce"
+                        )  # Green
+        
+            return colors
+        
+        ############################################################
+        # DISPLAY TABLE
+        ############################################################
+        
+        st.subheader(
+            "📊 Historical Assumption Drivers"
+        )
+        
+        styled_df = (
+            historical_metrics.style
+            .apply(
+                highlight_deviation,
+                subset=[
+                    "Revenue Growth %",
+                    "EBIT Margin %",
+                    "Investing CF %",
+                    "ΔWC % Revenue",
+                    "Dep % Revenue"
+                ]
+            )
+            .format({
+                "Revenue Growth %": "{:.2f}",
+                "EBIT Margin %": "{:.2f}",
+                "Investing CF %": "{:.2f}",
+                "ΔWC % Revenue": "{:.2f}",
+                "Dep % Revenue": "{:.2f}"
+            })
+        )
+        
+        st.dataframe(
+            styled_df,
+            use_container_width=True
+        )
+        
+        st.caption(
+            "🟢 Within 20% of historical average | 🟡 20%-50% deviation | 🔴 More than 50% deviation from historical average"
+        )
+        
+        ############ AVERAGES BEING USED IN THE MODEL ##############
+        st.subheader("Assumptions Derived From History")
+        
+        assumption_df = pd.DataFrame({
+            "Metric": [
+                "Revenue Growth %",
+                "EBIT Margin %",
+                "Investing CF %",
+                "ΔWC % Revenue",
+                "Dep % Revenue"
+            ],
+            "Historical Average": [
+                round(hist_growth * 100, 2),
+                round(hist_margin * 100, 2),
+                round(hist_investing * 100, 2),
+                round(hist_wc * 100, 2),
+                round(hist_dep * 100, 2)
+            ]
+        })
+        
+        st.dataframe(
+            assumption_df,
+            use_container_width=True
+        )
+        
+        
+        ############################################################
         # MARKET DATA
         ############################################################
         
