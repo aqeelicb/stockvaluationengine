@@ -14,6 +14,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+from datetime import datetime
 
 ############################################################
 # PDF REPORTING
@@ -34,7 +35,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 ############################################################
 
 st.set_page_config(
-    page_title="StocksValue by Aqeel",
+    page_title="Stock Valuation Engine by Aqeel",
     layout="wide"
 )
 
@@ -71,7 +72,7 @@ st.markdown("""
 # APP TITLE
 ############################################################
 
-st.title("📈 StocksValue by Aqeel")
+st.title("📈 Stock Valuation Engine by Aqeel")
 
 st.caption(
     "Financial Data: PKR Million | Forecast Charts: PKR Billion | Fair Value: PKR per Share")
@@ -259,6 +260,15 @@ def create_pdf_report():
         )
     )
 
+    report_time = datetime.now()
+    
+    elements.append(
+        Paragraph(
+            f"Report Generated: {report_time.strftime('%d-%b-%Y %I:%M %p')}",
+            styles["Normal"]
+        )
+    )
+   
     elements.append(
         Spacer(1,12)
     )
@@ -326,6 +336,134 @@ def create_pdf_report():
         )
     )
 
+    ############################################################
+    # ASSUMPTIONS USED
+    ############################################################
+    
+    elements.append(
+        Spacer(1,12)
+    )
+    
+    elements.append(
+        Paragraph(
+            "Assumptions Used",
+            styles["Heading2"]
+        )
+    )
+    
+    elements.append(
+        Paragraph(
+            f"Assumption Source: {assumption_source}",
+            styles["Normal"]
+        )
+    )
+    
+    elements.append(
+        Paragraph(
+            f"Revenue Growth: {growth_rate*100:.2f}%",
+            styles["Normal"]
+        )
+    )
+    
+    elements.append(
+        Paragraph(
+            f"EBIT Margin: {ebit_margin*100:.2f}%",
+            styles["Normal"]
+        )
+    )
+    
+    elements.append(
+        Paragraph(
+            f"Investing CF % Revenue: {investing_pct*100:.2f}%",
+            styles["Normal"]
+        )
+    )
+    
+    elements.append(
+        Paragraph(
+            f"Change in WC % Revenue: {wc_pct*100:.2f}%",
+            styles["Normal"]
+        )
+    )
+    
+    elements.append(
+        Paragraph(
+            f"Depreciation % Revenue: {dep_pct*100:.2f}%",
+            styles["Normal"]
+        )
+    )
+    
+    elements.append(
+        Paragraph(
+            f"WACC: {user_wacc*100:.2f}%",
+            styles["Normal"]
+        )
+    )
+    
+    elements.append(
+        Paragraph(
+            f"Terminal Growth: {user_terminal_growth*100:.2f}%",
+            styles["Normal"]
+        )
+    )
+    
+    elements.append(
+        Paragraph(
+            f"Forecast Period: {forecast_years} Years",
+            styles["Normal"]
+        )
+    )
+    
+    ############################################################
+    # HISTORICAL AVERAGES
+    ############################################################
+    
+    elements.append(
+        Spacer(1,12)
+    )
+    
+    elements.append(
+        Paragraph(
+            "Historical Averages",
+            styles["Heading2"]
+        )
+    )
+    
+    elements.append(
+        Paragraph(
+            f"Revenue CAGR: {revenue_cagr*100:.2f}%",
+            styles["Normal"]
+        )
+    )
+    
+    elements.append(
+        Paragraph(
+            f"Average EBIT Margin: {avg_ebit_margin*100:.2f}%",
+            styles["Normal"]
+        )
+    )
+    
+    elements.append(
+        Paragraph(
+            f"Average Investing CF % Revenue: {avg_investing_pct*100:.2f}%",
+            styles["Normal"]
+        )
+    )
+    
+    elements.append(
+        Paragraph(
+            f"Average Change WC % Revenue: {avg_wc_change_pct*100:.2f}%",
+            styles["Normal"]
+        )
+    )
+    
+    elements.append(
+        Paragraph(
+            f"Average Depreciation % Revenue: {avg_dep_pct*100:.2f}%",
+            styles["Normal"]
+        )
+    )
+    
     doc.build(elements)
 
     pdf = buffer.getvalue()
@@ -407,20 +545,25 @@ with tab1:
         )
         
         ############################################################
-        # WORKING CAPITAL %
+        # CHANGE IN WORKING CAPITAL %
         ############################################################
         
-        financials["WC_Pct"] = (
+        financials["WC_Change"] = (
             financials["Working_Capital"]
+            .diff()
+        )
+        
+        financials["WC_Change_Pct"] = (
+            financials["WC_Change"]
             /
             financials["Revenue"]
         )
         
-        avg_wc_pct = (
-            financials["WC_Pct"]
+        avg_wc_change_pct = (
+            financials["WC_Change_Pct"]
+            .iloc[1:]      # ignore first NaN
             .mean()
         )
-        
         ############################################################
         # DEPRECIATION %
         ############################################################
@@ -460,8 +603,8 @@ with tab1:
         )
         
         col4.metric(
-            "Avg Working Capital %",
-            f"{avg_wc_pct:.2%}"
+            "Avg Change WC %",
+            f"{avg_wc_change_pct:.2%}"
         )
         
         col5.metric(
@@ -666,7 +809,7 @@ assumption_source = st.sidebar.radio(
 hist_growth = revenue_cagr
 hist_margin = avg_ebit_margin
 hist_investing = avg_investing_pct
-hist_wc = avg_wc_pct
+hist_wc = avg_wc_change_pct
 hist_dep = avg_dep_pct
 
 ############################################################
@@ -697,7 +840,7 @@ if assumption_source == "Manual Override":
     ) / 100
 
     wc_pct = st.sidebar.slider(
-        "Working Capital % Revenue",
+        "Change in WC % Revenue",
         -50.0,
         50.0,
         float(hist_wc * 100)
@@ -745,6 +888,8 @@ forecast_rows = []
 
 revenue = latest_revenue
 
+previous_revenue = latest_revenue
+
 for year in range(
     1,
     forecast_years + 1
@@ -778,11 +923,31 @@ for year in range(
         investing_pct
     )
 
-    working_capital = (
+    ########################################################
+    # WORKING CAPITAL
+    ########################################################
+
+    current_wc = (
         revenue
         *
         wc_pct
     )
+
+    previous_wc = (
+        previous_revenue
+        *
+        wc_pct
+    )
+
+    change_wc = (
+        current_wc
+        -
+        previous_wc
+    )
+
+    ########################################################
+    # FCFF
+    ########################################################
 
     fcff = (
         nopat
@@ -791,7 +956,7 @@ for year in range(
         -
         investing_cf
         -
-        working_capital
+        change_wc
     )
 
     pv_fcff = (
@@ -810,30 +975,32 @@ for year in range(
         nopat,
         depreciation,
         investing_cf,
-        working_capital,
+        current_wc,
+        change_wc,
         fcff,
         pv_fcff
     ])
 
+    previous_revenue = revenue
+
 ############################################################
-
 # FORECAST DATAFRAME
-
 ############################################################
 
 forecast_df = pd.DataFrame(
-forecast_rows,
-columns=[
-"Year",
-"Revenue",
-"EBIT",
-"NOPAT",
-"Depreciation",
-"Investing_CF",
-"Working_Capital",
-"FCFF",
-"PV_FCFF"
-]
+    forecast_rows,
+    columns=[
+        "Year",
+        "Revenue",
+        "EBIT",
+        "NOPAT",
+        "Depreciation",
+        "Investing_CF",
+        "Working_Capital",
+        "Change_WC",
+        "FCFF",
+        "PV_FCFF"
+    ]
 )
 
 ############################################################
