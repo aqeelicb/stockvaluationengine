@@ -1,1839 +1,382 @@
 ############################################################
-# STOCK VALUATION ENGINE
-# VERSION 1 - PART 1
-# DATA IMPORT & HISTORICAL ANALYSIS
-#
-# Author: Muhammad Aqeel
-############################################################
-
-############################################################
-# IMPORT LIBRARIES
+# STOCKSVALUE
 ############################################################
 
 import streamlit as st
-import pandas as pd
-import numpy as np
-import plotly.graph_objects as go
-from datetime import datetime
+
+from data_loader import load_data
+
+from dcf import run_dcf
+
+from sensitivity import calculate_sensitivity
+
+from multiples import run_multiple_valuation
+from sidebar import get_assumptions
+
+from ui_data import show_data_tab
+from ui_dcf import show_dcf_tab
+from ui_valuation import show_valuation_tab
+
+from pdf_report import create_pdf_report
+
+
 
 ############################################################
-# PDF REPORTING
-############################################################
-
-from io import BytesIO
-
-from reportlab.platypus import (
-    SimpleDocTemplate,
-    Paragraph,
-    Spacer
-)
-
-from reportlab.lib.styles import getSampleStyleSheet
-
-############################################################
-# PAGE CONFIGURATION
+# PAGE CONFIG
 ############################################################
 
 st.set_page_config(
-    page_title="Stock Valuation Engine by Aqeel",
+
+    page_title="StocksValue by Aqeel",
+
+    page_icon="📈",
+
     layout="wide"
+
 )
 
 ############################################################
-# CUSTOM TAB STYLING
-############################################################
-
-st.markdown("""
-<style>
-
-/* Tab text */
-.stTabs [data-baseweb="tab"] {
-    font-size: 28px !important;
-    font-weight: 700 !important;
-    height: 60px !important;
-    white-space: pre-wrap;
-}
-
-/* Selected tab */
-.stTabs [aria-selected="true"] {
-    background-color: #f0f2f6;
-    border-radius: 8px 8px 0px 0px;
-}
-
-/* Tab container */
-.stTabs [data-baseweb="tab-list"] {
-    gap: 20px;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-############################################################
-# APP TITLE
-############################################################
-
-st.title("📈 Stock Valuation Engine by Aqeel")
-
-st.caption(
-    "Financial Data: PKR Million | Forecast Charts: PKR Billion | Fair Value: PKR per Share")
-
-############################################################
-# DOWNLOAD EXCEL TEMPLATE
-############################################################
-
-try:
-
-    with open(
-        "valuation_template.xlsx",
-        "rb"
-    ) as template_file:
-
-        st.download_button(
-            label="📥 Download Valuation Template",
-            data=template_file,
-            file_name="valuation_template.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-
-except:
-
-    st.warning(
-        "Valuation template file not found."
-    )
-
-############################################################
-# FILE UPLOAD
+# CUSTOM CSS
 ############################################################
 
 st.markdown(
-"""
-Upload the valuation template Excel file to begin analysis.
-"""
-)
+    """
+    <style>
 
-uploaded_file = st.file_uploader(
-    "Upload Excel Workbook",
-    type=["xlsx"]
-)
+    /* Tab text */
+    button[data-baseweb="tab"] {
 
+        font-size: 22px !important;
+
+        font-weight: 700 !important;
+
+        padding: 14px 28px !important;
+
+        height: 65px !important;
+
+        border-radius: 8px 8px 0px 0px !important;
+    }
+
+    /* Active tab */
+    button[data-baseweb="tab"][aria-selected="true"] {
+
+        background-color: #EAF4FF !important;
+
+        color: #003366 !important;
+
+        border-bottom: 4px solid #1f77b4 !important;
+
+    }
+
+    /* Space between tabs */
+    div[data-baseweb="tab-list"]{
+
+        gap:12px;
+
+    }
+
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 ############################################################
-# STOP IF NO FILE UPLOADED
+# TITLE
+############################################################
+
+st.title("📈 StocksValue by Aqeel")
+
+st.caption(
+    "Professional Equity Valuation Platform"
+)
+
+############################################################
+# FILE UPLOADER
+############################################################
+
+uploaded_file = st.file_uploader(
+
+    "Upload Excel Financial Model",
+
+    type=["xlsx"]
+
+)
+
+############################################################
+# STOP IF NO FILE
 ############################################################
 
 if uploaded_file is None:
 
-    st.info("Please upload the Excel template.")
+    st.info(
+        "Please upload an Excel file to begin."
+    )
+
     st.stop()
 
 ############################################################
-# READ EXCEL SHEETS
+# LOAD DATA
 ############################################################
 
-try:
-
-    company_df = pd.read_excel(
-        uploaded_file,
-        sheet_name="Company"
-    )
-
-    financials = pd.read_excel(
-        uploaded_file,
-        sheet_name="Financial_data"
-    )
-
-    market_df = pd.read_excel(
-        uploaded_file,
-        sheet_name="Market_data"
-    )
-
-    industry_df = pd.read_excel(
-        uploaded_file,
-        sheet_name="Industry_data"
-    )
-
-    weights_df = pd.read_excel(
-        uploaded_file,
-        sheet_name="Valuation_weights"
-    )
-
-except Exception as e:
-
-    st.error(f"Error reading workbook: {e}")
-    st.stop()
+data = load_data(uploaded_file)
 
 ############################################################
-# COMPANY INFORMATION
+# EXTRACT VARIABLES
 ############################################################
 
-company_name = company_df.iloc[0, 0]
-ticker = company_df.iloc[0, 1]
+company = data["company"]
+
+financials = data["financials"]
+
+market_df = data["market_df"]
+
+industry_df = data["industry_df"]
+
+weights_df = data["weights_df"]
+
+market_dict = data["market_dict"]
+
+industry = data["industry"]
+
+weights = data["weights"]
+
+latest = data["latest"]
+
+############################################################
+# COMPANY
+############################################################
+
+company_name = company["name"]
+
+ticker = company["ticker"]
+
+############################################################
+# MARKET
+############################################################
+
+current_price = data["current_price"]
+
+market_cap = data["market_cap"]
+
+market_ev = data["market_ev"]
+
+############################################################
+# CURRENT MULTIPLES
+############################################################
+
+current_pe = data["current_pe"]
+
+current_ps = data["current_ps"]
+
+current_ev_ebitda = data["current_ev_ebitda"]
+
+############################################################
+# INDUSTRY
+############################################################
+
+industry_pe = industry["pe"]
+
+industry_ps = industry["ps"]
+
+industry_ev_ebitda = industry["ev_ebitda"]
+
+############################################################
+# WEIGHTS
+############################################################
+
+dcf_weight = weights["dcf"]
+
+pe_weight = weights["pe"]
+
+ps_weight = weights["ps"]
+
+ev_weight = weights["ev"]
+
+############################################################
+# LATEST FINANCIALS
+############################################################
+
+latest_revenue = latest["revenue"]
+
+latest_net_income = latest["net_income"]
+
+latest_ebit = latest["ebit"]
+
+latest_depreciation = latest["depreciation"]
+
+latest_cash = latest["cash"]
+
+latest_debt = latest["debt"]
+
+latest_shares = latest["shares"]
+
+############################################################
+# SIDEBAR ASSUMPTIONS
+############################################################
+
+assumptions = get_assumptions(
+
+    financials,
+
+    market_dict,
+
+    industry,
+
+    current_pe,
+
+    current_ps,
+
+    current_ev_ebitda
+
+)
+
+############################################################
+# EXTRACT ASSUMPTIONS
+############################################################
+
+historical_table = assumptions["historical_table"]
+
+############################################################
+# DCF
+############################################################
+
+dcf = run_dcf(
+
+    latest,
+
+    assumptions
+
+)
+
+############################################################
+# SENSITIVITY ANALYSIS
+############################################################
+
+sensitivity = calculate_sensitivity(
+
+    dcf,
+
+    assumptions,
+
+    latest
+
+)
+
+sensitivity_df = sensitivity["sensitivity_df"]
+
+forecast_df = dcf["forecast_df"]
+
+fair_value = dcf["fair_value"]
+
+enterprise_value = dcf["enterprise_value"]
+
+equity_value = dcf["equity_value"]
+
+terminal_value = dcf["terminal_value"]
+
+pv_terminal = dcf["pv_terminal"]
+
+final_fcff = dcf["final_fcff"]
+
+############################################################
+# MULTIPLE VALUATION
+############################################################
+
+valuation = run_multiple_valuation(
+
+    latest,
+
+    assumptions,
+
+    dcf,
+
+    current_price,
+
+    market_cap,
+
+    market_ev,
+
+    weights
+
+)
+
+
+############################################################
+# COMPANY HEADER
+############################################################
 
 st.success(
-    f"Company: {company_name} | Ticker: {ticker}"
+
+    f"{company_name} ({ticker})"
+
 )
 
 ############################################################
-# INDUSTRY MULTIPLES
+# APPLICATION CONTEXT
 ############################################################
 
-industry_pe = float(
-    industry_df["PE"].iloc[0]
+context = {
+
+    "company": company,
+
+    "latest": latest,
+
+    "financials": financials,
+
+    "historical_table": historical_table,
+
+    "market_dict": market_dict,
+
+    "assumptions": assumptions,
+
+    "weights": weights,
+
+    "dcf": dcf,
+
+    "sensitivity": sensitivity,
+
+    "valuation": valuation,
+
+    "industry": industry,
+
+    "current_price": current_price,
+
+    "market_cap": market_cap,
+
+    "market_ev": market_ev
+
+}
+
+#####################################
+############# UI DATA ###############
+
+
+tab1, tab2, tab3 = st.tabs(
+
+    [
+
+        "📋 Data",
+
+        "📈 DCF",
+
+        "💰 Valuation"
+
+    ]
+
 )
-
-industry_ps = float(
-    industry_df["PS"].iloc[0]
-)
-
-industry_ev_ebitda = float(
-    industry_df["EV_EBITDA"].iloc[0]
-)
-
-############################################################
-# VALUATION WEIGHTS
-############################################################
-
-dcf_weight = float(
-    weights_df.loc[
-        weights_df["Method"] == "DCF",
-        "Weight"
-    ].iloc[0]
-)
-
-pe_weight = float(
-    weights_df.loc[
-        weights_df["Method"] == "PE",
-        "Weight"
-    ].iloc[0]
-)
-
-ps_weight = float(
-    weights_df.loc[
-        weights_df["Method"] == "PS",
-        "Weight"
-    ].iloc[0]
-)
-
-ev_weight = float(
-    weights_df.loc[
-        weights_df["Method"] == "EV/EBITDA",
-        "Weight"
-    ].iloc[0]
-)
-
-############################################################
-# PDF REPORT GENERATOR
-############################################################
-
-def create_pdf_report():
-
-    buffer = BytesIO()
-
-    doc = SimpleDocTemplate(buffer)
-
-    styles = getSampleStyleSheet()
-
-    elements = []
-
-    elements.append(
-        Paragraph(
-            "StocksValue Analyst Report",
-            styles["Title"]
-        )
-    )
-
-    elements.append(
-        Spacer(1,12)
-    )
-
-    elements.append(
-        Paragraph(
-            f"Company: {company_name}",
-            styles["Normal"]
-        )
-    )
-
-    elements.append(
-        Paragraph(
-            f"Ticker: {ticker}",
-            styles["Normal"]
-        )
-    )
-
-    report_time = datetime.now()
-    
-    elements.append(
-        Paragraph(
-            f"Report Generated: {report_time.strftime('%d-%b-%Y %I:%M %p')}",
-            styles["Normal"]
-        )
-    )
-   
-    elements.append(
-        Spacer(1,12)
-    )
-
-    elements.append(
-        Paragraph(
-            "Valuation Summary",
-            styles["Heading2"]
-        )
-    )
-
-    elements.append(
-        Paragraph(
-            f"Current Market Price: Rs {current_price:,.2f}",
-            styles["Normal"]
-        )
-    )
-
-    elements.append(
-        Paragraph(
-            f"DCF Fair Value: Rs {fair_value:,.2f}",
-            styles["Normal"]
-        )
-    )
-
-    elements.append(
-        Paragraph(
-            f"PE Fair Value: Rs {pe_fair_value:,.2f}",
-            styles["Normal"]
-        )
-    )
-
-    elements.append(
-        Paragraph(
-            f"PS Fair Value: Rs {ps_fair_value:,.2f}",
-            styles["Normal"]
-        )
-    )
-
-    elements.append(
-        Paragraph(
-            f"EV/EBITDA Fair Value: Rs {ev_ebitda_fair_value:,.2f}",
-            styles["Normal"]
-        )
-    )
-
-    elements.append(
-        Paragraph(
-            f"Weighted Fair Value: Rs {weighted_fair_value:,.2f}",
-            styles["Normal"]
-        )
-    )
-
-    elements.append(
-        Paragraph(
-            f"Upside / Downside: {upside_pct:.1f}%",
-            styles["Normal"]
-        )
-    )
-
-    elements.append(
-        Paragraph(
-            f"Recommendation: {signal}",
-            styles["Normal"]
-        )
-    )
-
-    ############################################################
-    # ASSUMPTIONS USED
-    ############################################################
-    
-    elements.append(
-        Spacer(1,12)
-    )
-    
-    elements.append(
-        Paragraph(
-            "Assumptions Used",
-            styles["Heading2"]
-        )
-    )
-    
-    elements.append(
-        Paragraph(
-            f"Assumption Source: {assumption_source}",
-            styles["Normal"]
-        )
-    )
-    
-    elements.append(
-        Paragraph(
-            f"Revenue Growth: {growth_rate*100:.2f}%",
-            styles["Normal"]
-        )
-    )
-    
-    elements.append(
-        Paragraph(
-            f"EBIT Margin: {ebit_margin*100:.2f}%",
-            styles["Normal"]
-        )
-    )
-    
-    elements.append(
-        Paragraph(
-            f"Investing CF % Revenue: {investing_pct*100:.2f}%",
-            styles["Normal"]
-        )
-    )
-    
-    elements.append(
-        Paragraph(
-            f"Change in WC % Revenue: {wc_pct*100:.2f}%",
-            styles["Normal"]
-        )
-    )
-    
-    elements.append(
-        Paragraph(
-            f"Depreciation % Revenue: {dep_pct*100:.2f}%",
-            styles["Normal"]
-        )
-    )
-    
-    elements.append(
-        Paragraph(
-            f"WACC: {user_wacc*100:.2f}%",
-            styles["Normal"]
-        )
-    )
-    
-    elements.append(
-        Paragraph(
-            f"Terminal Growth: {user_terminal_growth*100:.2f}%",
-            styles["Normal"]
-        )
-    )
-    
-    elements.append(
-        Paragraph(
-            f"Forecast Period: {forecast_years} Years",
-            styles["Normal"]
-        )
-    )
-    
-    ############################################################
-    # HISTORICAL AVERAGES
-    ############################################################
-    
-    elements.append(
-        Spacer(1,12)
-    )
-    
-    elements.append(
-        Paragraph(
-            "Historical Averages",
-            styles["Heading2"]
-        )
-    )
-    
-    elements.append(
-        Paragraph(
-            f"Revenue CAGR: {revenue_cagr*100:.2f}%",
-            styles["Normal"]
-        )
-    )
-    
-    elements.append(
-        Paragraph(
-            f"Average EBIT Margin: {avg_ebit_margin*100:.2f}%",
-            styles["Normal"]
-        )
-    )
-    
-    elements.append(
-        Paragraph(
-            f"Average Investing CF % Revenue: {avg_investing_pct*100:.2f}%",
-            styles["Normal"]
-        )
-    )
-    
-    elements.append(
-        Paragraph(
-            f"Average Change WC % Revenue: {avg_wc_change_pct*100:.2f}%",
-            styles["Normal"]
-        )
-    )
-    
-    elements.append(
-        Paragraph(
-            f"Average Depreciation % Revenue: {avg_dep_pct*100:.2f}%",
-            styles["Normal"]
-        )
-    )
-    
-    doc.build(elements)
-
-    pdf = buffer.getvalue()
-
-    buffer.close()
-
-    return pdf
-
-############################################################
-# TABS
-############################################################
-
-tab1, tab2, tab3 = st.tabs([
-    "📋 Data & Assumptions",
-    "📊 DCF Valuation",
-    "📈 Multiples & Summary"
-])
 
 with tab1:
-  
-        ############################################################
-        # SHOW FINANCIAL DATA
-        ############################################################
-        
-        st.header("Historical Financial Data")
-        st.divider()
-        
-        st.dataframe(
-            financials,
-            use_container_width=True
-        )
-        
-        ############################################################
-        # CALCULATE HISTORICAL METRICS
-        ############################################################
-        
-        ############################################################
-        # REVENUE CAGR
-        ############################################################
-        
-        first_revenue = financials["Revenue"].iloc[0]
-        last_revenue = financials["Revenue"].iloc[-1]
-        
-        num_years = len(financials) - 1
-        
-        revenue_cagr = (
-            (last_revenue / first_revenue)
-            ** (1 / num_years)
-        ) - 1
-        
-        ############################################################
-        # EBIT MARGIN
-        ############################################################
-        
-        financials["EBIT_Margin"] = (
-            financials["EBIT"]
-            /
-            financials["Revenue"]
-        )
-        
-        avg_ebit_margin = (
-            financials["EBIT_Margin"]
-            .mean()
-        )
-        
-        ############################################################
-        # INVESTING CASH FLOW %
-        ############################################################
-        
-        financials["Investing_Pct"] = (
-            financials["Investing_Cash_Flow"]
-            /
-            financials["Revenue"]
-        )
-        
-        avg_investing_pct = (
-            financials["Investing_Pct"]
-            .mean()
-        )
-        
-        ############################################################
-        # CHANGE IN WORKING CAPITAL %
-        ############################################################
-        
-        financials["WC_Change"] = (
-            financials["Working_Capital"]
-            .diff()
-        )
-        
-        financials["WC_Change_Pct"] = (
-            financials["WC_Change"]
-            /
-            financials["Revenue"]
-        )
-        
-        avg_wc_change_pct = (
-            financials["WC_Change_Pct"]
-            .iloc[1:]      # ignore first NaN
-            .mean()
-        )
-        ############################################################
-        # DEPRECIATION %
-        ############################################################
-        
-        financials["Dep_Pct"] = (
-            financials["Depreciation"]
-            /
-            financials["Revenue"]
-        )
-        
-        avg_dep_pct = (
-            financials["Dep_Pct"]
-            .mean()
-        )
-        
-        ############################################################
-        # DISPLAY HISTORICAL METRICS
-        ############################################################
-        
-        st.header("Historical Analysis")
-        
-        col1, col2, col3, col4, col5 = st.columns(5)
-        
-        col1.metric(
-            "Revenue CAGR",
-            f"{revenue_cagr:.2%}"
-        )
-        
-        col2.metric(
-            "Avg EBIT Margin",
-            f"{avg_ebit_margin:.2%}"
-        )
-        
-        col3.metric(
-            "Avg Investing CF %",
-            f"{avg_investing_pct:.2%}"
-        )
-        
-        col4.metric(
-            "Avg Change WC %",
-            f"{avg_wc_change_pct:.2%}"
-        )
-        
-        col5.metric(
-            "Avg Depreciation %",
-            f"{avg_dep_pct:.2%}"
-        )
-        
-        ############################################################
-        # HISTORICAL ASSUMPTION TABLE
-        ############################################################
-        
-        historical_metrics = pd.DataFrame()
-        
-        historical_metrics["Year"] = financials["Year"]
-        
-        historical_metrics["Revenue_Growth"] = (
-            financials["Revenue"]
-            .pct_change()
-        )
-        
-        historical_metrics["EBIT_Margin"] = (
-            financials["EBIT"]
-            /
-            financials["Revenue"]
-        )
-        
-        historical_metrics["Investing_CF_Pct"] = (
-            financials["Investing_Cash_Flow"]
-            /
-            financials["Revenue"]
-        )
-        
-        historical_metrics["WC_Change_Pct"] = (
-            financials["Working_Capital"]
-            .diff()
-            /
-            financials["Revenue"]
-        )
-        
-        historical_metrics["Dep_Pct"] = (
-            financials["Depreciation"]
-            /
-            financials["Revenue"]
-        )
-        
-        ############################################################
-        # HISTORICAL ASSUMPTION DRIVERS
-        ############################################################
-        
-        historical_metrics = pd.DataFrame()
-        
-        historical_metrics["Year"] = financials["Year"]
-        
-        historical_metrics["Revenue Growth %"] = (
-            financials["Revenue"]
-            .pct_change()
-            * 100
-        )
-        
-        historical_metrics["EBIT Margin %"] = (
-            financials["EBIT"]
-            /
-            financials["Revenue"]
-            * 100
-        )
-        
-        historical_metrics["Investing CF %"] = (
-            financials["Investing_Cash_Flow"]
-            /
-            financials["Revenue"]
-            * 100
-        )
-        
-        historical_metrics["ΔWC % Revenue"] = (
-            financials["Working_Capital"]
-            .diff()
-            /
-            financials["Revenue"]
-            * 100
-        )
-        
-        historical_metrics["Dep % Revenue"] = (
-            financials["Depreciation"]
-            /
-            financials["Revenue"]
-            * 100
-        )
-        
-        ############################################################
-        # ROUND VALUES
-        ############################################################
-        
-        for col in historical_metrics.columns[1:]:
-        
-            historical_metrics[col] = (
-                historical_metrics[col]
-                .round(2)
-            )
-        
-        ############################################################
-        # COLOR CODING
-        ############################################################
-        
-        def highlight_deviation(series):
-        
-            avg = series.mean()
-        
-            colors = []
-        
-            for value in series:
-        
-                if pd.isna(value):
-        
-                    colors.append("")
-        
-                else:
-        
-                    deviation = abs(
-                        value - avg
-                    ) / abs(avg) if avg != 0 else 0
-        
-                    if deviation > 0.50:
-        
-                        colors.append(
-                            "background-color:#ff9999"
-                        )  # Red
-        
-                    elif deviation > 0.20:
-        
-                        colors.append(
-                            "background-color:#fff2a8"
-                        )  # Yellow
-        
-                    else:
-        
-                        colors.append(
-                            "background-color:#c6efce"
-                        )  # Green
-        
-            return colors
-        
-        ############################################################
-        # DISPLAY TABLE
-        ############################################################
-        
-        st.subheader(
-            "📊 Historical Assumption Drivers"
-        )
-        
-        styled_df = (
-            historical_metrics.style
-            .apply(
-                highlight_deviation,
-                subset=[
-                    "Revenue Growth %",
-                    "EBIT Margin %",
-                    "Investing CF %",
-                    "ΔWC % Revenue",
-                    "Dep % Revenue"
-                ]
-            )
-            .format({
-                "Revenue Growth %": "{:.2f}",
-                "EBIT Margin %": "{:.2f}",
-                "Investing CF %": "{:.2f}",
-                "ΔWC % Revenue": "{:.2f}",
-                "Dep % Revenue": "{:.2f}"
-            })
-        )
-        
-        st.dataframe(
-            styled_df,
-            use_container_width=True
-        )
-        
-        st.caption(
-            "🟢 Within 20% of historical average | 🟡 20%-50% deviation | 🔴 More than 50% deviation from historical average"
-        )
-        
-        
-        ############################################################
-        # MARKET DATA
-        ############################################################
-        
-        st.header("Market Assumptions")
-        
-        market_dict = dict(
-            zip(
-                market_df["Variable"],
-                market_df["Value"]
-            )
-        )
-        
-        st.dataframe(
-            market_df,
-            use_container_width=True
-        )
 
-############################################################
-# DEBUG SECTION
-############################################################
-
-with st.expander("Debug Information"):
-
-    st.write("Company Sheet")
-    st.dataframe(company_df)
-
-    st.write("Market Sheet")
-    st.dataframe(market_df)
-
-    st.write("Industry Sheet")
-    st.dataframe(industry_df)
-
-    st.write("Weights Sheet")
-    st.dataframe(weights_df)
-
-############################################################
-# END OF PART 1
-############################################################
-
-############################################################
-# PART 2 WILL CONTAIN:
-#
-# 1. CAPM COST OF EQUITY
-# 2. WACC
-# 3. DCF FORECAST
-# 4. TERMINAL VALUE
-# 5. ENTERPRISE VALUE
-# 6. EQUITY VALUE
-# 7. FAIR VALUE PER SHARE
-# 8. MANUAL OVERRIDE
-# 9. REVENUE CHART
-# 10. FCFF CHART
-#
-############################################################
-
-############################################################
-
-# PART 2
-
-# DCF ENGINE
-
-############################################################
-
-import plotly.graph_objects as go
-
-############################################################
-
-# CONVERT MARKET DATA TO DICTIONARY
-
-############################################################
-
-market_dict = dict(
-zip(
-market_df["Variable"],
-market_df["Value"]
-)
-)
-
-############################################################
-
-# EXTRACT MARKET ASSUMPTIONS
-
-############################################################
-
-risk_free_rate = float(
-market_dict.get("Risk Free Rate", 12)
-)
-
-market_erp = float(
-market_dict.get("Market ERP", 6)
-)
-
-beta = float(
-market_dict.get("Beta", 1)
-)
-
-cost_of_debt = float(
-market_dict.get("Cost of Debt", 12)
-)
-
-tax_rate = float(
-market_dict.get("Tax Rate", 29)
-)
-
-forecast_years = int(
-market_dict.get("Forecast Years", 5)
-)
-
-terminal_growth = float(
-market_dict.get("Terminal Growth", 3)
-)
-
-############################################################
-
-# LATEST YEAR DATA
-
-############################################################
-
-latest = financials.iloc[-1]
-
-latest_revenue = latest["Revenue"]
-latest_debt = latest["Debt"]
-latest_cash = latest["Cash"]
-latest_shares = latest["Shares_Outstanding"]
-
-############################################################
-
-# CAPM COST OF EQUITY
-
-############################################################
-
-cost_of_equity = (
-risk_free_rate
-+
-beta * market_erp
-)
-
-############################################################
-# CAPITAL STRUCTURE
-############################################################
-
-st.sidebar.subheader("Capital Structure")
-
-equity_weight_pct = st.sidebar.slider(
-    "Equity Weight (%)",
-    min_value=0,
-    max_value=100,
-    value=70,
-    step=10
-)
-
-debt_weight_pct = 100 - equity_weight_pct
-
-st.sidebar.write(
-    f"Debt Weight (%): {debt_weight_pct}"
-)
-
-equity_weight = equity_weight_pct / 100
-debt_weight = debt_weight_pct / 100
-
-############################################################
-# WACC
-############################################################
-
-wacc = (
-    equity_weight * cost_of_equity
-    +
-    debt_weight * cost_of_debt * (1 - tax_rate / 100)
-)
-
-############################################################
-
-# SIDEBAR
-
-############################################################
-
-st.sidebar.header("DCF Assumptions")
-
-assumption_source = st.sidebar.radio(
-"Assumption Source",
-[
-"Historical Average",
-"Manual Override"
-]
-)
-
-
-############################################################
-
-# HISTORICAL DEFAULTS
-
-############################################################
-
-hist_growth = revenue_cagr
-hist_margin = avg_ebit_margin
-hist_investing = avg_investing_pct
-hist_wc = avg_wc_change_pct
-hist_dep = avg_dep_pct
-
-############################################################
-# MANUAL OVERRIDE
-############################################################
-
-if assumption_source == "Manual Override":
-
-    growth_rate = st.sidebar.slider(
-        "Revenue Growth %",
-        -20.0,
-        100.0,
-        float(hist_growth * 100)
-    ) / 100
-
-    ebit_margin = st.sidebar.slider(
-        "EBIT Margin %",
-        0.0,
-        80.0,
-        float(hist_margin * 100)
-    ) / 100
-
-    investing_pct = st.sidebar.slider(
-        "Investing CF % Revenue",
-        -50.0,
-        50.0,
-        float(hist_investing * 100)
-    ) / 100
-
-    wc_pct = st.sidebar.slider(
-        "Change in WC % Revenue",
-        -50.0,
-        50.0,
-        float(hist_wc * 100)
-    ) / 100
-
-    dep_pct = st.sidebar.slider(
-        "Depreciation % Revenue",
-        0.0,
-        20.0,
-        float(hist_dep * 100)
-    ) / 100
-
-    user_wacc = st.sidebar.slider(
-        "WACC %",
-        1.0,
-        30.0,
-        float(wacc * 100)
-    ) / 100
-
-    user_terminal_growth = st.sidebar.slider(
-        "Terminal Growth %",
-        0.0,
-        10.0,
-        float(terminal_growth)
-    ) / 100
-
-else:
-
-    growth_rate = hist_growth
-    ebit_margin = hist_margin
-    investing_pct = hist_investing
-    wc_pct = hist_wc
-    dep_pct = hist_dep
-
-    user_wacc = wacc
-    user_terminal_growth = terminal_growth / 100
-
-
-
-############################################################
-# DCF FORECAST
-############################################################
-
-forecast_rows = []
-
-revenue = latest_revenue
-
-previous_revenue = latest_revenue
-
-for year in range(
-    1,
-    forecast_years + 1
-):
-
-    revenue = revenue * (
-        1 + growth_rate
-    )
-
-    ebit = (
-        revenue
-        *
-        ebit_margin
-    )
-
-    nopat = (
-        ebit
-        *
-        (1 - tax_rate / 100)
-    )
-
-    depreciation = (
-        revenue
-        *
-        dep_pct
-    )
-
-    investing_cf = (
-        revenue
-        *
-        investing_pct
-    )
-
-    ########################################################
-    # WORKING CAPITAL
-    ########################################################
-
-    current_wc = (
-        revenue
-        *
-        wc_pct
-    )
-
-    previous_wc = (
-        previous_revenue
-        *
-        wc_pct
-    )
-
-    change_wc = (
-        current_wc
-        -
-        previous_wc
-    )
-
-    ########################################################
-    # FCFF
-    ########################################################
-
-    fcff = (
-        nopat
-        +
-        depreciation
-        -
-        investing_cf
-        -
-        change_wc
-    )
-
-    pv_fcff = (
-        fcff
-        /
-        (
-            (1 + user_wacc)
-            ** year
-        )
-    )
-
-    forecast_rows.append([
-        year,
-        revenue,
-        ebit,
-        nopat,
-        depreciation,
-        investing_cf,
-        current_wc,
-        change_wc,
-        fcff,
-        pv_fcff
-    ])
-
-    previous_revenue = revenue
-
-############################################################
-# FORECAST DATAFRAME
-############################################################
-
-forecast_df = pd.DataFrame(
-    forecast_rows,
-    columns=[
-        "Year",
-        "Revenue",
-        "EBIT",
-        "NOPAT",
-        "Depreciation",
-        "Investing_CF",
-        "Working_Capital",
-        "Change_WC",
-        "FCFF",
-        "PV_FCFF"
-    ]
-)
-
-############################################################
-
-# TERMINAL VALUE
-
-############################################################
-
-final_fcff = (
-forecast_df["FCFF"]
-.iloc[-1]
-)
-
-terminal_fcff = (
-final_fcff
-*
-(
-1
-+
-user_terminal_growth
-)
-)
-
-terminal_value = (
-terminal_fcff
-/
-(
-user_wacc
--
-user_terminal_growth
-)
-)
-
-pv_terminal = (
-terminal_value
-/
-(
-(
-1
-+
-user_wacc
-)
-**
-forecast_years
-)
-)
-
-############################################################
-
-# ENTERPRISE VALUE
-
-############################################################
-
-enterprise_value = (
-forecast_df["PV_FCFF"].sum()
-+
-pv_terminal
-)
-
-############################################################
-
-# EQUITY VALUE
-
-############################################################
-
-equity_value = (
-enterprise_value
--
-latest_debt
-+
-latest_cash
-)
-
-############################################################
-
-# FAIR VALUE PER SHARE
-
-############################################################
-
-fair_value = (
-equity_value
-/
-latest_shares
-)
-
-############################################################
-# FAIR VALUE RANGE
-############################################################
-
-bear_fair_value = fair_value * 0.95
-
-base_fair_value = fair_value
-
-bull_fair_value = fair_value * 1.05
-
+    show_data_tab(context)
+    
+#################### UI DCF #####################
 
 with tab2:
-        ############################################################
-        
-        # DCF RESULTS
-        
-        ############################################################
-        
-        st.header("DCF Valuation")
-        st.divider()
-        
-        c1, c2, c3 = st.columns(3)
-        
-        c1.metric(
-        "Enterprise Value",
-        f"{enterprise_value:,.0f}"
-        )
-        
-        c2.metric(
-        "Equity Value",
-        f"{equity_value:,.0f}"
-        )
-        
-        c3.metric(
-        "Fair Value / Share",
-        f"{fair_value:,.2f}"
-        )
-        
-        ############################################################
-        # FAIR VALUE RANGE
-        ############################################################
-        
-        bear_fair_value = fair_value * 0.95
-        
-        base_fair_value = fair_value
-        
-        bull_fair_value = fair_value * 1.05
-        
-        st.subheader("Fair Value Range")
-        
-        col1, col2, col3 = st.columns(3)
-        
-        col1.metric(
-            "Bear Case",
-            f"Rs {bear_fair_value:,.2f}"
-        )
-        
-        col2.metric(
-            "Base Case",
-            f"Rs {base_fair_value:,.2f}"
-        )
-        
-        col3.metric(
-            "Bull Case",
-            f"Rs {bull_fair_value:,.2f}"
-        )
-        
-        ############################################################
-        # DCF SENSITIVITY TABLE
-        ############################################################
-        
-        st.subheader("DCF Sensitivity Table")
-        
-        wacc_range = [
-            user_wacc - 0.02,
-            user_wacc - 0.01,
-            user_wacc,
-            user_wacc + 0.01,
-            user_wacc + 0.02
-        ]
-        
-        growth_range = [
-            user_terminal_growth - 0.01,
-            user_terminal_growth,
-            user_terminal_growth + 0.01
-        ]
-        
-        sensitivity_data = []
-        
-        for g in growth_range:
-        
-            row = []
-        
-            for w in wacc_range:
-        
-                try:
-        
-                    tv = (
-                        final_fcff
-                        * (1 + g)
-                        /
-                        (w - g)
-                    )
-        
-                    pv_tv = (
-                        tv
-                        /
-                        ((1 + w) ** forecast_years)
-                    )
-        
-                    ev = (
-                        forecast_df["PV_FCFF"].sum()
-                        +
-                        pv_tv
-                    )
-        
-                    eq = (
-                        ev
-                        - latest_debt
-                        + latest_cash
-                    )
-        
-                    fv = (
-                        eq
-                        /
-                        latest_shares
-                    )
-        
-                    row.append(
-                        round(fv, 2)
-                    )
-        
-                except:
-        
-                    row.append(None)
-        
-            sensitivity_data.append(row)
-        
-        sensitivity_df = pd.DataFrame(
-        
-            sensitivity_data,
-        
-            columns=[
-                f"{w*100:.1f}%"
-                for w in wacc_range
-            ],
-        
-            index=[
-                f"{g*100:.1f}%"
-                for g in growth_range
-            ]
-        )
-        
-        sensitivity_df.index.name = "Terminal Growth"
-        
-        st.markdown(
-            "**Columns = WACC | Rows = Terminal Growth**"
-        )
-        
-        st.dataframe(
-            sensitivity_df,
-            use_container_width=True
-        )
-        
-        ############################################################
-        # END OF SENSITIVITY ANALYSIS
-        ############################################################
-        
-        ############################################################
-        
-        # SHOW FORECAST
-        
-        ############################################################
-        
-        st.subheader(
-        "DCF Forecast Table"
-        )
-        
-        st.dataframe(
-        forecast_df,
-        use_container_width=True
-        )
-        
-        st.header("DCF Forecast Visualizations")
-        
-        ############################################################
-        # REVENUE FORECAST CHART
-        ############################################################
-        
-        st.subheader("Revenue Forecast")
-        
-        fig1 = go.Figure()
-        
-        fig1.add_trace(
-            go.Scatter(
-                x=forecast_df["Year"],
-                y=forecast_df["Revenue"]/1000,
-                mode="lines+markers",
-                name="Revenue"
-            )
-        )
-        
-        fig1.update_layout(
-            title="Revenue Forecast (DCF)",
-            xaxis_title="Forecast Year",
-            yaxis_title="Revenue (Rs. Billions)",
-            template="plotly_white"
-        )
-        
-        st.plotly_chart(
-            fig1,
-            use_container_width=True
-        )
-        
-        ############################################################
-        # FCFF FORECAST CHART
-        ############################################################
-        
-        st.subheader("FCFF Forecast")
-        
-        fig2 = go.Figure()
-        
-        fig2.add_trace(
-            go.Bar(
-                x=forecast_df["Year"],
-                y=forecast_df["FCFF"]/1000,
-                name="FCFF"
-            )
-        )
-        
-        fig2.update_layout(
-            title="Free Cash Flow to Firm (FCFF)",
-            xaxis_title="Forecast Year",
-            yaxis_title="FCFF (Rs. Billion)",
-            template="plotly_white"
-        )
-        
-        st.plotly_chart(
-            fig2,
-            use_container_width=True
-        )
-        
-        ############################################################
-        
-        # DCF ASSUMPTIONS TABLE
-        
-        ############################################################
-        
-        st.subheader(
-        "DCF Assumptions Used"
-        )
-        
-        assumptions_df = pd.DataFrame({
-        
-            "Assumption":[
-                "Revenue Growth",
-                "EBIT Margin",
-                "Investing CF %",
-                "Working Capital %",
-                "Depreciation %",
-                "WACC",
-                "Terminal Growth"
-            ],
-        
-            "Value":[
-                f"{growth_rate:.2%}",
-                f"{ebit_margin:.2%}",
-                f"{investing_pct:.2%}",
-                f"{wc_pct:.2%}",
-                f"{dep_pct:.2%}",
-                f"{user_wacc:.2%}",
-                f"{user_terminal_growth:.2%}"
-            ]
-        })
-        
-        st.dataframe(
-        assumptions_df,
-        use_container_width=True
-        )
 
-############################################################
+    show_dcf_tab(context)
 
-# END OF PART 2
-
-############################################################
-
-############################################################
-# RELATIVE VALUATION INPUTS
-############################################################
-
-latest_revenue = financials["Revenue"].iloc[-1]
-
-latest_net_income = financials["Net_Income"].iloc[-1]
-
-latest_ebit = financials["EBIT"].iloc[-1]
-
-latest_depreciation = financials["Depreciation"].iloc[-1]
-
-latest_cash = financials["Cash"].iloc[-1]
-
-latest_debt = financials["Debt"].iloc[-1]
-
-latest_shares = financials["Shares_Outstanding"].iloc[-1]
-
-############################################################
-# CURRENT MARKET DATA
-############################################################
-
-current_price = float(
-    market_df.loc[
-        market_df["Variable"] == "Current Market Price",
-        "Value"
-    ].iloc[0]
-)
-
-############################################################
-# CURRENT MARKET MULTIPLES (CALCULATED)
-############################################################
-
-market_cap = (
-    current_price
-    *
-    latest_shares
-)
-
-eps = (
-    latest_net_income
-    /
-    latest_shares
-)
-
-current_pe = (
-    current_price
-    /
-    eps
-) if eps != 0 else 0
-
-current_ps = (
-    market_cap
-    /
-    latest_revenue
-) if latest_revenue != 0 else 0
-
-market_ev = (
-    market_cap
-    +
-    latest_debt
-    -
-    latest_cash
-)
-
-latest_ebitda = (
-    latest_ebit
-    +
-    latest_depreciation
-)
-
-current_ev_ebitda = (
-    market_ev
-    /
-    latest_ebitda
-) if latest_ebitda != 0 else 0
-
-############################################################
-# PE VALUATION
-############################################################
-
-eps = (
-    latest_net_income
-    /
-    latest_shares
-)
-
-pe_fair_value = (
-    eps
-    *
-    industry_pe
-)
-
-############################################################
-# PS VALUATION
-############################################################
-
-market_cap_ps = (
-    latest_revenue
-    *
-    industry_ps
-)
-
-ps_fair_value = (
-    market_cap_ps
-    /
-    latest_shares
-)
-
-############################################################
-# EV EBITDA VALUATION
-############################################################
-
-latest_ebitda = (
-    latest_ebit
-    +
-    latest_depreciation
-)
-
-enterprise_value_multiple = (
-    latest_ebitda
-    *
-    industry_ev_ebitda
-)
-
-equity_value_multiple = (
-    enterprise_value_multiple
-    -
-    latest_debt
-    +
-    latest_cash
-)
-
-ev_ebitda_fair_value = (
-    equity_value_multiple
-    /
-    latest_shares
-)
-
-############################################################
-# WEIGHTED FAIR VALUE
-############################################################
-
-weighted_fair_value = (
-
-    fair_value
-    * dcf_weight
-
-    +
-
-    pe_fair_value
-    * pe_weight
-
-    +
-
-    ps_fair_value
-    * ps_weight
-
-    +
-
-    ev_ebitda_fair_value
-    * ev_weight
-
-)
-
-############################################################
-# UPSIDE / DOWNSIDE
-############################################################
-
-upside_pct = (
-    (weighted_fair_value - current_price)
-    / current_price
-) * 100
-
-############################################################
-# INVESTMENT SIGNAL
-############################################################
-
-if upside_pct >= 15:
-    signal = "🟢 BUY"
-
-elif upside_pct >= -10:
-    signal = "🟡 HOLD"
-
-else:
-    signal = "🔴 SELL"
-
-############################################################
-# VALUATION SUMMARY
-############################################################
-
+################### UI VALUATION ################
 
 with tab3:
-        
-        st.header("Valuation Summary")
-        st.divider()
-        
-        ############################################################
-        # SUMMARY METRICS
-        ############################################################
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        col1.metric(
-            "Current Price",
-            f"Rs {current_price:,.2f}"
-        )
-        
-        col2.metric(
-            "Weighted Fair Value",
-            f"Rs {weighted_fair_value:,.2f}"
-        )
-        
-        col3.metric(
-            "Upside / Downside",
-            f"{upside_pct:.1f}%"
-        )
-        
-        col4.metric(
-            "Signal",
-            signal
-        )
-        
-        summary_df = pd.DataFrame({
-        
-            "Method":[
-                "DCF",
-                "PE",
-                "PS",
-                "EV/EBITDA"
-            ],
-        
-            "Company Multiple":[
-                "-",
-                f"{current_pe:.2f}x",
-                f"{current_ps:.2f}x",
-                f"{current_ev_ebitda:.2f}x"
-            ],
-        
-            "Industry Multiple":[
-                "-",
-                f"{industry_pe:.2f}x",
-                f"{industry_ps:.2f}x",
-                f"{industry_ev_ebitda:.2f}x"
-            ],
-        
-            "Fair Value (Rs)":[
-                round(fair_value,2),
-                round(pe_fair_value,2),
-                round(ps_fair_value,2),
-                round(ev_ebitda_fair_value,2)
-            ]
-        
-        })
-        
-        st.dataframe(
-            summary_df,
-            use_container_width=True
-        )
-        
-        ############################################################
-        # BUY / HOLD / SELL LOGIC
-        ############################################################
-        
-        st.subheader("📌 Recommendation Logic")
-        
-        st.markdown("""
-        **Buy:** Upside > 15%
-        
-        **Hold:** Upside between -15% and +15%
-        
-        **Sell:** Downside > 15%
-        """)
-        
-        ############################################################
-        # PDF DOWNLOAD
-        ############################################################
-        
-        pdf_report = create_pdf_report()
-        
-        st.download_button(
-            label="📄 Download Analyst Report (PDF)",
-            data=pdf_report,
-            file_name=f"{ticker}_Analyst_Report.pdf",
-            mime="application/pdf"
-        )
-        
-###############################################################
-################### Multiple Valuations and Summary Ends #####
-################################################################
 
-######## END OF APPLICATION ##############
+    show_valuation_tab(context)
