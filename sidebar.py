@@ -69,12 +69,12 @@ def get_assumptions(
     )
 
     ########################################################
-    # INVESTING %
+    # Capex %
     ########################################################
 
-    financials["Investing_Pct"] = (
+    financials["Capex_Pct"] = (
 
-        financials["Investing_Cash_Flow"]
+        financials["Capex"]
 
         /
 
@@ -82,9 +82,9 @@ def get_assumptions(
 
     )
 
-    avg_investing_pct = (
+    avg_Capex_pct = (
 
-        financials["Investing_Pct"]
+        financials["Capex_Pct"]
 
         .mean()
 
@@ -198,7 +198,7 @@ def get_assumptions(
 
     ebit_margin = avg_ebit_margin
 
-    investing_pct = avg_investing_pct
+    Capex_pct = avg_Capex_pct
 
     wc_pct = avg_wc_change_pct
 
@@ -268,15 +268,15 @@ def get_assumptions(
 
         ) / 100
 
-        investing_pct = st.sidebar.slider(
+        Capex_pct = st.sidebar.slider(
 
-            "Investing CF % Revenue",
+            "Capex % Revenue",
 
             -50.0,
 
             50.0,
 
-            float(investing_pct * 100),
+            float(Capex_pct * 100),
 
             step=0.05
 
@@ -588,12 +588,12 @@ def get_assumptions(
     )
     
     ########################################################
-    # INVESTING %
+    # Capex %
     ########################################################
     
-    historical_table["Investing %"] = (
+    historical_table["Capex %"] = (
     
-        historical_table["Investing_Cash_Flow"]
+        historical_table["Capex"]
     
         /
     
@@ -643,7 +643,7 @@ def get_assumptions(
     
         "EBIT Margin",
     
-        "Investing %",
+        "Capex %",
     
         "ΔWC %",
     
@@ -661,7 +661,7 @@ def get_assumptions(
 
         "revenue_cagr": revenue_cagr,
         "avg_ebit_margin": avg_ebit_margin,
-        "avg_investing_pct": avg_investing_pct,
+        "avg_Capex_pct": avg_Capex_pct,
         "avg_wc_change_pct": avg_wc_change_pct,
         "avg_dep_pct": avg_dep_pct,
         "historical_table": historical_table,
@@ -670,7 +670,7 @@ def get_assumptions(
 
         "growth_rate": growth_rate,
         "ebit_margin": ebit_margin,
-        "investing_pct": investing_pct,
+        "Capex_pct": Capex_pct,
         "wc_pct": wc_pct,
         "dep_pct": dep_pct,
         "tax_rate": tax_rate,

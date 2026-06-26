@@ -38,7 +38,7 @@ def run_dcf(
 
     ebit_margin = assumptions["ebit_margin"]
 
-    investing_pct = assumptions["investing_pct"]
+    Capex_pct = assumptions["Capex_pct"]
 
     dep_pct = assumptions["dep_pct"]
 
@@ -132,13 +132,13 @@ def run_dcf(
 
         )
 
-        investing_cf = (
+        Capex = (
 
             revenue
 
             *
 
-            investing_pct
+            Capex_pct
 
         )
 
@@ -182,7 +182,7 @@ def run_dcf(
 
             -
 
-            investing_cf
+            Capex
 
             -
 
@@ -228,7 +228,7 @@ def run_dcf(
 
                 depreciation,
 
-                investing_cf,
+                Capex,
 
                 wc_change,
 
@@ -260,7 +260,7 @@ def run_dcf(
 
             "Depreciation",
 
-            "Investing CF",
+            "Capex",
 
             "Δ Working Capital",
 

@@ -391,9 +391,9 @@ def create_pdf_report(
 
         [
 
-            "Investing CF",
+            "Capex",
 
-            f"{assumptions['investing_pct']:.2%}"
+            f"{assumptions['Capex_pct']:.2%}"
 
         ],
 

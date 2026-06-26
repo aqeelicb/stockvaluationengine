@@ -192,9 +192,9 @@ def show_data_tab(context):
 
     c3.metric(
 
-        "Avg Investing CF",
+        "Avg Capex",
 
-        f"{assumptions['avg_investing_pct']:.2%}"
+        f"{assumptions['avg_Capex_pct']:.2%}"
 
     )
 
@@ -236,7 +236,7 @@ def show_data_tab(context):
     
             "EBIT Margin":"{:.2%}",
     
-            "Investing %":"{:.2%}",
+            "Capex %":"{:.2%}",
     
             "ΔWC %":"{:.2%}",
     
@@ -322,7 +322,7 @@ def show_data_tab(context):
 
             "EBIT Margin",
 
-            "Investing",
+            "Capex",
 
             "ΔWC",
 
@@ -342,7 +342,7 @@ def show_data_tab(context):
 
             f"{assumptions['ebit_margin']:.2%}",
 
-            f"{assumptions['investing_pct']:.2%}",
+            f"{assumptions['Capex_pct']:.2%}",
 
             f"{assumptions['wc_pct']:.2%}",
 

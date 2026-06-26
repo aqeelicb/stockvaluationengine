@@ -80,7 +80,7 @@ def show_dcf_tab(context):
     
             "Depreciation":"{:,.0f}",
     
-            "Investing CF":"{:,.0f}",
+            "Capex":"{:,.0f}",
     
             "Δ Working Capital":"{:,.0f}",
     
